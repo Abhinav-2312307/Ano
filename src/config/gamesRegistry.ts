@@ -6,6 +6,7 @@ import { PaperFallGameHub } from '@/components/games/paper-fall/PaperFallGameHub
 import { ArrowMazeGameHub } from '@/components/games/arrow-maze/ArrowMazeGameHub';
 import { UltimateTicTacToeGameHub } from '@/components/games/ultimate-tic-tac-toe/UltimateTicTacToeGameHub';
 import { DemolitionDerbyGameHub } from '@/components/games/demolition-derby/DemolitionDerbyGameHub';
+import { StreetRushGameHub } from '@/components/games/street-rush/components/StreetRushGameHub';
 
 export type GameSupportedMode = 'SOLO' | 'MULTIPLAYER' | 'BOTH';
 
@@ -234,6 +235,21 @@ export const GAMES_REGISTRY: Record<string, GameDefinition> = {
     type: 'multiplayer',
     href: '/dashboard/games/demolition-derby',
     component: DemolitionDerbyGameHub
+  },
+  'street-rush': {
+    id: 'street-rush',
+    name: 'Street Rush',
+    title: 'Street Rush',
+    slug: 'street-rush',
+    description: 'Fast arcade-style 3D multiplayer racing on a neon city circuit! Drift sharp corners, blast nitro, and race 3 laps to victory.',
+    icon: '🏎️',
+    color: 'from-cyan-500 via-blue-600 to-purple-800',
+    supportedModes: 'MULTIPLAYER',
+    enabled: true,
+    displayOrder: 15,
+    type: 'multiplayer',
+    href: '/dashboard/games/street-rush',
+    component: StreetRushGameHub
   }
 };
 

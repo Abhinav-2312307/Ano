@@ -12,6 +12,8 @@ const MAX_PLAYERS = {
   'ARROW_MAZE': 8,
   'ULTIMATE_TIC_TAC_TOE': 2,
   'DEMOLITION_DERBY': 8,
+  'STREET_RUSH': 8,
+  'CAR_RACING': 8,
 };
 const DEFAULT_MAX_PLAYERS = 6;
 
@@ -233,11 +235,21 @@ class LobbyService {
         this.lobbies.delete(id);
         continue;
       }
+      const playersList = Array.from(lobby.players.values()).map(p => ({
+        userId: p.userId,
+        nickname: p.nickname,
+        role: p.role,
+        isReady: p.isReady,
+        selectedCarId: p.selectedCarId || 'road_crusher',
+        assetReady: p.assetReady ?? false
+      }));
+
       results.push({
         id: lobby.id,
         hostId: lobby.hostId,
         hostName: host.nickname || 'Unknown',
         gameType: lobby.gameType,
+        players: playersList,
         playerCount: lobby.players.size,
         maxPlayers: lobby.settings?.maxPlayers || MAX_PLAYERS[lobby.gameType] || DEFAULT_MAX_PLAYERS,
         status: lobby.status,

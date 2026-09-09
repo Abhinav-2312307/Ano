@@ -83,7 +83,7 @@ export const DEVELOPERS: Developer[] = [
       "Full platform Next.js frontend with dark glassmorphism design system",
       "Real-time social feed with community voting, media upload, and comments",
       "Interactive 2D HTML5 canvas drawing engine with stroke replays",
-      "3D Three.js scene integration for Chamber Clash",
+      "3D Three.js scene & WebGL vehicle dynamics for Street Rush & Chamber Clash",
       "Turn-based synchronization & cascade chain reaction engines"
     ],
     technologies: [
@@ -99,6 +99,10 @@ export const DEVELOPERS: Developer[] = [
       "TailwindCSS"
     ],
     games: [
+      {
+        gameId: "street-rush",
+        roleInGame: "Lead Developer & WebGL Engine"
+      },
       {
         gameId: "chamber-clash",
         roleInGame: "Lead Developer & 3D Systems"
@@ -265,6 +269,26 @@ export const ABOUT_GAMES: AboutGame[] = [
         developerId: "aditya-prajapati",
         role: "Game Developer",
         contribution: "Nested grid win verification, active board routing logic, and multiplayer matchmaking."
+      }
+    ]
+  },
+  {
+    id: "street-rush",
+    name: "Street Rush",
+    tagline: "High-speed 3D Arcade Multiplayer Racing",
+    description: "Battle up to 8 racers in a high-octane 3D street circuit featuring nitro boosts, drifting physics, and live spectator tracking.",
+    icon: "🏎️",
+    color: "from-cyan-900 via-blue-950 to-purple-950",
+    href: "/dashboard/games/street-rush",
+    supportedModes: "MULTIPLAYER",
+    status: "Live",
+    technologies: ["Next.js", "React", "Three.js", "WebGL", "Socket.IO", "Web Audio API"],
+    featured: true,
+    developers: [
+      {
+        developerId: "adarsh-sachan",
+        role: "Lead Developer",
+        contribution: "3D street circuit builder, vehicle physics & drift engine, server-authoritative lap checkpointing."
       }
     ]
   },

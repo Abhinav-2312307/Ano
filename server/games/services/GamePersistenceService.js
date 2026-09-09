@@ -1,17 +1,24 @@
 const prisma = require('../../db');
 
 class GamePersistenceService {
+  static mapGameTypeToPrisma(gameType) {
+    if (!gameType) return 'CAR_RACING';
+    if (gameType === 'STREET_RUSH') return 'CAR_RACING';
+    return gameType;
+  }
+
   static async createSession(sessionId, gameType) {
     try {
+      const mappedGameType = this.mapGameTypeToPrisma(gameType);
       return await prisma.gameSession.upsert({
         where: { id: sessionId },
         update: {
-          gameType,
+          gameType: mappedGameType,
           status: 'WAITING',
         },
         create: {
           id: sessionId,
-          gameType,
+          gameType: mappedGameType,
           status: 'WAITING',
         }
       });

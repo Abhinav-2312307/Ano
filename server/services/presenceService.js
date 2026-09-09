@@ -19,6 +19,9 @@ const GAME_DISPLAY_NAMES = {
   '2048': '2048',
   'MINESWEEPER': 'Minesweeper',
   'CONNECT_FOUR': 'Connect 4',
+  'DEMOLITION_DERBY': 'Demolition Derby',
+  'STREET_RUSH': 'Street Rush',
+  'CAR_RACING': 'Street Rush',
 
   // Lowercase / slug keys
   'bluff': 'Bluff Card Game',
@@ -35,6 +38,8 @@ const GAME_DISPLAY_NAMES = {
   'ultimate-tic-tac-toe': 'Ultimate Tic-Tac-Toe',
   'minesweeper': 'Minesweeper',
   'connect-four': 'Connect 4',
+  'demolition-derby': 'Demolition Derby',
+  'street-rush': 'Street Rush',
 };
 
 const PRESENCE_TTL_SECONDS = 120; // 2 minutes heartbeat TTL

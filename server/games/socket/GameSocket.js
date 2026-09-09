@@ -11,6 +11,7 @@ const PaperFallEngine = require('../paper-fall/PaperFallEngine');
 const ArrowMazeEngine = require('../arrow-maze/ArrowMazeEngine');
 const UltimateTicTacToeEngine = require('../ultimate-tic-tac-toe/UltimateTicTacToeEngine');
 const DemolitionDerbyEngine = require('../demolition-derby/DemolitionDerbyEngine');
+const StreetRushEngine = require('../street-rush/StreetRushEngine');
 const userService = require('../../services/userService');
 const presenceService = require('../../services/presenceService');
 
@@ -27,6 +28,8 @@ const ENGINE_MAP = {
   'ARROW_MAZE': ArrowMazeEngine,
   'ULTIMATE_TIC_TAC_TOE': UltimateTicTacToeEngine,
   'DEMOLITION_DERBY': DemolitionDerbyEngine,
+  'STREET_RUSH': StreetRushEngine,
+  'CAR_RACING': StreetRushEngine,
 };
 
 const GAME_DISPLAY_NAMES = presenceService.GAME_DISPLAY_NAMES || {
@@ -42,6 +45,8 @@ const GAME_DISPLAY_NAMES = presenceService.GAME_DISPLAY_NAMES || {
   'ARROW_MAZE': 'Arrow Maze',
   'ULTIMATE_TIC_TAC_TOE': 'Ultimate Tic-Tac-Toe',
   'DEMOLITION_DERBY': 'Demolition Derby',
+  'STREET_RUSH': 'Street Rush',
+  'CAR_RACING': 'Street Rush',
 };
 
 // In-memory chat message buffer for active game lobbies and matches (gameId -> Message[])
@@ -70,11 +75,15 @@ function registerGameSockets(io, socket, onlineUsers, activeGames, socketToUser)
       vehicleId: p.selectedCarId || 'road_crusher',
       assetReady: p.assetReady ?? false
     }));
+    const hostPlayer = lobby.players.get(lobby.hostId) || playersList[0];
     return {
       id: lobby.id,
       hostId: lobby.hostId,
+      hostName: hostPlayer?.nickname || lobby.hostName || 'Unknown',
       gameType: lobby.gameType,
       players: playersList,
+      playerCount: playersList.length,
+      maxPlayers: lobby.settings?.maxPlayers || (lobby.gameType === 'STREET_RUSH' || lobby.gameType === 'CAR_RACING' ? 8 : (lobby.maxPlayers || 8)),
       status: lobby.status,
       settings: lobby.settings || null
     };
@@ -203,6 +212,26 @@ function registerGameSockets(io, socket, onlineUsers, activeGames, socketToUser)
       player.selectedCarId = selectedCarId;
     }
     console.log(`[DERBY ASSETS READY] Player ${userId} (${player.nickname}) vehicle ${player.selectedCarId || 'road_crusher'} assets ready in lobby ${gameId}`);
+
+    io.to(gameId).emit('lobby_state', serializeLobby(lobby));
+    broadcastLobbies();
+  });
+
+  // ── STREET RUSH: Client reports all 3D vehicle & circuit assets finished loading ──
+  socket.on('street_rush_assets_ready', ({ gameId, userId, selectedCarId }) => {
+    const lobby = LobbyService.getLobby(gameId);
+    if (!lobby) return;
+    let player = lobby.players.get(userId);
+    if (!player && userId) {
+      player = Array.from(lobby.players.values()).find(p => p.userId === userId);
+    }
+    if (!player) return;
+
+    player.assetReady = true;
+    if (selectedCarId) {
+      player.selectedCarId = selectedCarId;
+    }
+    console.log(`[STREET RUSH ASSETS READY] Player ${userId} (${player.nickname}) vehicle ${player.selectedCarId || 'apex_phantom'} assets ready in lobby ${gameId}`);
 
     io.to(gameId).emit('lobby_state', serializeLobby(lobby));
     broadcastLobbies();
@@ -342,7 +371,7 @@ function registerGameSockets(io, socket, onlineUsers, activeGames, socketToUser)
       return;
     }
 
-    if (lobby.players.size < 2 && lobby.gameType !== 'ARROW_MAZE' && lobby.gameType !== 'PAPER_FALL') {
+    if (lobby.players.size < 2 && lobby.gameType !== 'ARROW_MAZE' && lobby.gameType !== 'PAPER_FALL' && lobby.gameType !== 'STREET_RUSH') {
       return socket.emit('game_error', { message: 'You need at least 2 players to start!' });
     }
 
@@ -377,9 +406,16 @@ function registerGameSockets(io, socket, onlineUsers, activeGames, socketToUser)
     engine.onEvent = (type, data) => {
       io.to(gameId).emit(type, data);
 
-      // Automatically update presence to spectator on player elimination
+      // Automatically update presence to spectator on player elimination or race finish
       if (type === 'player_eliminated' && data && data.playerId) {
         presenceService.setPlaying(data.playerId, null, {
+          gameId,
+          gameType: engine.gameType,
+          isSpectating: true
+        }).catch(console.error);
+      }
+      if (type === 'racer_finished_event' && data && data.userId) {
+        presenceService.setPlaying(data.userId, null, {
           gameId,
           gameType: engine.gameType,
           isSpectating: true
@@ -491,6 +527,31 @@ function registerGameSockets(io, socket, onlineUsers, activeGames, socketToUser)
   socket.on('game_action', ({ gameId, userId, action, data }) => {
     const engine = activeGames.get(gameId);
     if (!engine) {
+      const lobby = LobbyService.getLobby(gameId);
+      if (lobby) {
+        const effectiveUserId = userId || socketToUser?.get(socket.id)?.userId;
+        if (action === 'select_car') {
+          const carId = data?.carId;
+          const res = LobbyService.selectCar(gameId, effectiveUserId, carId);
+          if (res && res.error) {
+            return socket.emit('game_error', { message: res.error });
+          }
+          io.to(gameId).emit('lobby_state', serializeLobby(lobby));
+          broadcastLobbies();
+          return;
+        }
+        if (action === 'set_laps' || action === 'update_settings') {
+          const laps = Number(data?.totalLaps || data?.laps);
+          if ([1, 2, 3, 5].includes(laps)) {
+            if (!lobby.settings) lobby.settings = {};
+            lobby.settings.totalLaps = laps;
+            io.to(gameId).emit('lobby_state', serializeLobby(lobby));
+            broadcastLobbies();
+          }
+          return;
+        }
+        return;
+      }
       return socket.emit('game_error', { message: 'Game session not found.' });
     }
 
@@ -588,7 +649,7 @@ function registerGameSockets(io, socket, onlineUsers, activeGames, socketToUser)
       broadcastGameStates(gameId, engine);
     };
 
-    if (engine.status === 'FINISHED' && engine.gameType !== 'SCRIBBLE' && engine.gameType !== 'DEMOLITION_DERBY') {
+    if (engine.status === 'FINISHED' && engine.gameType !== 'SCRIBBLE' && engine.gameType !== 'DEMOLITION_DERBY' && engine.gameType !== 'STREET_RUSH' && engine.gameType !== 'CAR_RACING') {
       setTimeout(() => {
         engine.players.forEach(p => {
           presenceService.clearPlaying(p.userId, null, gameId).catch(console.error);
@@ -1088,6 +1149,30 @@ function registerGameSockets(io, socket, onlineUsers, activeGames, socketToUser)
       engine.handlePlayerAction(effectiveUserId, 'select_car', { carId });
     }
   });
+
+  const handleCarSelect = ({ gameId, userId, carId }) => {
+    const effectiveUserId = userId || socketToUser?.get(socket.id)?.userId;
+    console.log(`[GameSocket] car_select: gameId=${gameId}, userId=${effectiveUserId}, carId=${carId}`);
+
+    const res = LobbyService.selectCar(gameId, effectiveUserId, carId);
+    if (res && res.error) {
+      return socket.emit('game_error', { message: res.error });
+    }
+
+    const lobby = LobbyService.getLobby(gameId);
+    if (lobby) {
+      io.to(gameId).emit('lobby_state', serializeLobby(lobby));
+      broadcastLobbies();
+    }
+
+    const engine = activeGames.get(gameId);
+    if (engine && typeof engine.handlePlayerAction === 'function') {
+      engine.handlePlayerAction(effectiveUserId, 'select_car', { carId });
+    }
+  };
+
+  socket.on('street_rush_select_car', handleCarSelect);
+  socket.on('lobby_select_car', handleCarSelect);
 
   socket.on('derby_select_arena', ({ gameId, hostId, arenaId }) => {
     const lobby = LobbyService.getLobby(gameId);
